@@ -1,5 +1,7 @@
-streamlit
+Plaintext
+fastapi
+uvicorn
 pandas
-git+https://github.com/FinanceData/FinanceDataReader.git
+FinanceDataReader
 plotly
-streamlit-local-storage
+jinja2

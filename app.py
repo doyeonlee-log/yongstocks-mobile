@@ -43,9 +43,8 @@ subject_col_map = {"외국인": "Foreigner", "기관": "Institution", "개인": 
 def load_stock_list():
     if os.path.exists("data/stock_list.csv"):
         try:
-            # 렌더(리눅스) 서버 환경에서 한글 깨짐 현상을 원천 방어하기 위해 cp949와 utf-8 교차 검증
             return pd.read_csv("data/stock_list.csv", encoding='utf-8')
-        except UnicodeDecodeError:
+        except:
             return pd.read_csv("data/stock_list.csv", encoding='cp949')
     else:
         try:
@@ -61,7 +60,6 @@ def load_stock_list():
 stock_df = load_stock_list()
 stock_df['티커'] = stock_df['티커'].astype(str).str.zfill(6)
 stock_df['선택용_이름'] = stock_df['종목명'].astype(str) + " (" + stock_df['티커'] + ")"
-
 
 def get_all_investor_data(ticker, start, end):
     if not os.path.exists("data/investor_data.csv"):
@@ -99,7 +97,7 @@ def classify_stock_groups(subject_col):
 
         matched_row = stock_df[stock_df['티커'] == ticker]
         if matched_row.empty: continue
-        stock_name = matched_row['종목명'].values
+        stock_name = matched_row['종목명'].values[0]
 
         history_before_recent = sub_series.iloc[:-5]
         recent_days = sub_series.iloc[-5:]
@@ -134,9 +132,13 @@ def clean_sel_name(val):
 
 def clean_pure_name(val):
     if not val: return ""
-    return val.split("(").replace("🌱 ", "").replace("🔥 ", "").replace("🚨 ", "").strip()
+    return val.split("(")[0].replace("🌱 ", "").replace("🔥 ", "").replace("🚨 ", "").strip()
 
 def draw_custom_multi_chart(df, label_name, configs):
+    if df.empty:
+        fig = go.Figure()
+        fig.update_layout(title="데이터가 선택되지 않았거나 없습니다.")
+        return fig
     df = df.sort_values(by='Date').reset_index(drop=True)
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
@@ -429,4 +431,5 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8050))
     app.run_server(host="0.0.0.0", port=port, debug=False)
+
 

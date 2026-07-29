@@ -434,6 +434,7 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
 @app.server.route("/debug")
 def debug_data():
     import io
+    import datetime as _dt
     out = io.StringIO()
     out.write(f"stock_df rows: {len(stock_df)}\n")
     out.write(f"stock_df 티커 sample: {stock_df['티커'].head(3).tolist()}\n\n")
@@ -452,6 +453,26 @@ def debug_data():
         out.write(f"stock_list 티커 수: {len(stk_tickers)}\n")
         out.write(f"교집합(매칭되는 티커) 수: {len(overlap)}\n")
         out.write(f"교집합 sample: {list(overlap)[:5]}\n")
+
+        # ===== 날짜/필터 추가 진단 =====
+        out.write("\n----- 날짜 진단 -----\n")
+        raw2 = pd.read_csv("data/investor_data.csv", dtype={'Ticker': str})
+        raw2['Date'] = pd.to_datetime(raw2['Date'], errors='coerce')
+        out.write(f"Date dtype: {raw2['Date'].dtype}\n")
+        out.write(f"Date 최소: {raw2['Date'].min()}\n")
+        out.write(f"Date 최대: {raw2['Date'].max()}\n")
+        out.write(f"Date 파싱실패(NaT) 수: {raw2['Date'].isna().sum()}\n\n")
+
+        # 삼성전자(005930)로 실제 조회 재현
+        test_ticker = "005930"
+        start = f"{_dt.date.today().year}-01-01"
+        end = _dt.date.today().strftime("%Y-%m-%d")
+        out.write(f"서버 오늘 날짜: {_dt.date.today()}\n")
+        out.write(f"조회 테스트: ticker={test_ticker}, {start} ~ {end}\n")
+        raw2['Ticker'] = raw2['Ticker'].astype(str).str.zfill(6)
+        mask = (raw2['Ticker'] == test_ticker) & (raw2['Date'] >= pd.to_datetime(start)) & (raw2['Date'] <= pd.to_datetime(end))
+        out.write(f"필터 통과 행 수: {mask.sum()}\n")
+        out.write(f"해당 티커 전체 행 수(날짜무관): {(raw2['Ticker'] == test_ticker).sum()}\n")
     else:
         out.write("investor_data.csv NOT FOUND on server!\n")
 

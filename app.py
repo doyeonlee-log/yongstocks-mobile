@@ -430,55 +430,6 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
 
     return html.Div("선택된 탭이 없습니다."), out_storage
 
-# ===== 임시 진단용 (원인 찾고 나면 지울 것) =====
-@app.server.route("/debug")
-def debug_data():
-    import io
-    import datetime as _dt
-    out = io.StringIO()
-    out.write(f"stock_df rows: {len(stock_df)}\n")
-    out.write(f"stock_df 티커 sample: {stock_df['티커'].head(3).tolist()}\n\n")
-
-    if os.path.exists("data/investor_data.csv"):
-        raw = pd.read_csv("data/investor_data.csv", dtype={'Ticker': str})
-        out.write(f"investor rows: {len(raw)}\n")
-        out.write(f"investor columns: {list(raw.columns)}\n")
-        out.write(f"investor Ticker sample: {raw['Ticker'].astype(str).head(3).tolist()}\n\n")
-
-        # 실제로 매칭되는 티커가 있는지
-        inv_tickers = set(raw['Ticker'].astype(str).str.zfill(6))
-        stk_tickers = set(stock_df['티커'])
-        overlap = inv_tickers & stk_tickers
-        out.write(f"investor 고유 티커 수: {len(inv_tickers)}\n")
-        out.write(f"stock_list 티커 수: {len(stk_tickers)}\n")
-        out.write(f"교집합(매칭되는 티커) 수: {len(overlap)}\n")
-        out.write(f"교집합 sample: {list(overlap)[:5]}\n")
-
-        # ===== 날짜/필터 추가 진단 =====
-        out.write("\n----- 날짜 진단 -----\n")
-        raw2 = pd.read_csv("data/investor_data.csv", dtype={'Ticker': str})
-        raw2['Date'] = pd.to_datetime(raw2['Date'], errors='coerce')
-        out.write(f"Date dtype: {raw2['Date'].dtype}\n")
-        out.write(f"Date 최소: {raw2['Date'].min()}\n")
-        out.write(f"Date 최대: {raw2['Date'].max()}\n")
-        out.write(f"Date 파싱실패(NaT) 수: {raw2['Date'].isna().sum()}\n\n")
-
-        # 삼성전자(005930)로 실제 조회 재현
-        test_ticker = "005930"
-        start = f"{_dt.date.today().year}-01-01"
-        end = _dt.date.today().strftime("%Y-%m-%d")
-        out.write(f"서버 오늘 날짜: {_dt.date.today()}\n")
-        out.write(f"조회 테스트: ticker={test_ticker}, {start} ~ {end}\n")
-        raw2['Ticker'] = raw2['Ticker'].astype(str).str.zfill(6)
-        mask = (raw2['Ticker'] == test_ticker) & (raw2['Date'] >= pd.to_datetime(start)) & (raw2['Date'] <= pd.to_datetime(end))
-        out.write(f"필터 통과 행 수: {mask.sum()}\n")
-        out.write(f"해당 티커 전체 행 수(날짜무관): {(raw2['Ticker'] == test_ticker).sum()}\n")
-    else:
-        out.write("investor_data.csv NOT FOUND on server!\n")
-
-    return "<pre>" + out.getvalue() + "</pre>"
-# ===== 임시 진단 끝 =====
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8050))
     app.run(host="0.0.0.0", port=port, debug=False)   # [수정] run_server → run (Dash 3.x+ 제거됨)

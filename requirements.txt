@@ -1,6 +1,6 @@
 fastapi
 uvicorn
 pandas>=2.0.0,<3.0.0
-FinanceDataReader
+finance-datareader
 plotly
 jinja2

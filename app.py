@@ -42,21 +42,26 @@ subject_col_map = {"외국인": "Foreigner", "기관": "Institution", "개인": 
 
 def load_stock_list():
     if os.path.exists("data/stock_list.csv"):
-        return pd.read_csv("data/stock_list.csv")
+        try:
+            # 렌더(리눅스) 서버 환경에서 한글 깨짐 현상을 원천 방어하기 위해 cp949와 utf-8 교차 검증
+            return pd.read_csv("data/stock_list.csv", encoding='utf-8')
+        except UnicodeDecodeError:
+            return pd.read_csv("data/stock_list.csv", encoding='cp949')
     else:
         try:
             df = fdr.StockListing('KRX')
             df_filtered = df[df['Market'].isin(['KOSPI', 'KOSDAQ'])][['Code', 'Name', 'Market']]
             df_filtered.columns = ['티커', '종목명', '시장']
             if not os.path.exists("data"): os.makedirs("data")
-            df_filtered.to_csv("data/stock_list.csv", index=False)
+            df_filtered.to_csv("data/stock_list.csv", index=False, encoding='utf-8')
             return df_filtered
         except:
             return pd.DataFrame({'티커': ['005930', '000660'], '종목명': ['삼성전자', 'SK하이닉스'], '시장': ['KOSPI', 'KOSPI']})
 
 stock_df = load_stock_list()
 stock_df['티커'] = stock_df['티커'].astype(str).str.zfill(6)
-stock_df['선택용_이름'] = stock_df['종목명'] + " (" + stock_df['티커'] + ")"
+stock_df['선택용_이름'] = stock_df['종목명'].astype(str) + " (" + stock_df['티커'] + ")"
+
 
 def get_all_investor_data(ticker, start, end):
     if not os.path.exists("data/investor_data.csv"):

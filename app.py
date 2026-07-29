@@ -63,7 +63,7 @@ def get_all_investor_data(ticker, start, end):
         return pd.DataFrame()
     try:
         df = pd.read_csv("data/investor_data.csv", dtype={'Ticker': str})
-        df['Date'] = pd.to_datetime(df['Date'])
+        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
         df['Ticker'] = df['Ticker'].astype(str).str.zfill(6)
         mask = (df['Ticker'] == ticker.zfill(6)) & (df['Date'] >= pd.to_datetime(start)) & (df['Date'] <= pd.to_datetime(end))
         return df.loc[mask].copy().sort_values('Date')
@@ -75,7 +75,7 @@ def classify_stock_groups(subject_col):
         return [], [], []
     try:
         df_all = pd.read_csv("data/investor_data.csv", dtype={'Ticker': str})
-        df_all['Date'] = pd.to_datetime(df_all['Date'])
+        df_all['Date'] = pd.to_datetime(df_all['Date'], errors='coerce')
         df_all['Ticker'] = df_all['Ticker'].astype(str).str.zfill(6)
     except:
         return [], [], []
@@ -267,12 +267,12 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
     if out_storage:
         default_favs = [x.strip() for x in out_storage.split(",") if x.strip() in stock_df['선택용_이름'].values]
     else:
-        default_favs = [stock_df['선택용_이름'].iloc, stock_df['선택용_이름'].iloc] if len(stock_df) > 2 else []
+        default_favs = [stock_df['선택용_이름'].iloc[0], stock_df['선택용_이름'].iloc[1]] if len(stock_df) > 2 else []
 
     if active_tab == "tab-1":
-        ind_stock = ind_stock or (stock_df['선택용_이름'].iloc if not stock_df.empty else "")
-        ticker = stock_df[stock_df['선택용_이름'] == ind_stock]['티커'].values if ind_stock in stock_df['선택용_이름'].values else ""
-        name = stock_df[stock_df['선택용_이름'] == ind_stock]['종목명'].values if ind_stock in stock_df['선택용_이름'].values else ""
+        ind_stock = ind_stock or (stock_df['선택용_이름'].iloc[0] if not stock_df.empty else "")
+        ticker = stock_df[stock_df['선택용_이름'] == ind_stock]['티커'].values[0] if ind_stock in stock_df['선택용_이름'].values else ""
+        name = stock_df[stock_df['선택용_이름'] == ind_stock]['종목명'].values[0] if ind_stock in stock_df['선택용_이름'].values else ""
         
         df = get_all_investor_data(ticker, t1_s, t1_e) if ticker else pd.DataFrame()
         chart_node = dcc.Graph(figure=draw_custom_multi_chart(df, name, current_configs), config={"scrollZoom": True, "displayModeBar": False}) if not df.empty else dbc.Alert("데이터가 없습니다. 제어판 설정을 확인해 주세요.", color="warning", className="mt-2")
@@ -297,7 +297,7 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
 
     elif active_tab == "tab-2":
         dropdown_opts = sprouts if sprouts else ["종목 없음"]
-        spr_stock = spr_stock if spr_stock in dropdown_opts else dropdown_opts
+        spr_stock = spr_stock if spr_stock in dropdown_opts else dropdown_opts[0]
         
         if sprouts and spr_stock != "종목 없음":
             s_ticker = clean_sel_name(spr_stock)
@@ -327,7 +327,7 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
 
     elif active_tab == "tab-3":
         dropdown_opts = hopes if hopes else ["종목 없음"]
-        hp_stock = hp_stock if hp_stock in dropdown_opts else dropdown_opts
+        hp_stock = hp_stock if hp_stock in dropdown_opts else dropdown_opts[0]
         
         if hopes and hp_stock != "종목 없음":
             h_ticker = clean_sel_name(hp_stock)
@@ -357,7 +357,7 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
 
     elif active_tab == "tab-4":
         dropdown_opts = cleans if cleans else ["종목 없음"]
-        cl_stock = cl_stock if cl_stock in dropdown_opts else dropdown_opts
+        cl_stock = cl_stock if cl_stock in dropdown_opts else dropdown_opts[0]
         
         if cleans and cl_stock != "종목 없음":
             c_ticker = clean_sel_name(cl_stock)
@@ -391,8 +391,8 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
         if fav_stocks:
             for idx, stock_name in enumerate(fav_stocks):
                 if stock_name not in stock_df['선택용_이름'].values: continue
-                ticker = stock_df[stock_df['선택용_이름'] == stock_name]['티커'].values
-                name = stock_df[stock_df['선택용_이름'] == stock_name]['종목명'].values
+                ticker = stock_df[stock_df['선택용_이름'] == stock_name]['티커'].values[0]
+                name = stock_df[stock_df['선택용_이름'] == stock_name]['종목명'].values[0]
                 df_fav = get_all_investor_data(ticker, t5_s, t5_e)
                 if not df_fav.empty:
                     charts_list.append(dcc.Graph(id=f"chart_fav_{ticker}_{idx}", figure=draw_custom_multi_chart(df_fav, name, current_configs), config={"scrollZoom": True, "displayModeBar": False}))
@@ -424,5 +424,4 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8050))
     app.run_server(host="0.0.0.0", port=port, debug=False)
-
 

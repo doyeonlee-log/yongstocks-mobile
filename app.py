@@ -17,7 +17,7 @@ app = dash.Dash(
     external_stylesheets=[dbc.themes.BOOTSTRAP],
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes"}]
 )
-server = app.server  # Render.com 배포(gunicorn) 연동용 객체
+server = app.server  
 app.title = "새싹발굴하기 - Pro Dashboard"
 
 # ==========================================
@@ -94,9 +94,8 @@ def classify_stock_groups(subject_col):
 
         matched_row = stock_df[stock_df['티커'] == ticker]
         if matched_row.empty: continue
-        stock_name = matched_row['종목명'].values[0]
+        stock_name = matched_row['종목명'].values
 
-        # 1. 🌱 새싹 탭 로직
         history_before_recent = sub_series.iloc[:-5]
         recent_days = sub_series.iloc[-5:]
         is_sprout = (history_before_recent.max() == 0) and (recent_days > 0).any()
@@ -106,7 +105,6 @@ def classify_stock_groups(subject_col):
             prefix = "🌱 " if is_recent_5d else ""
             sprout_list.append(f"{prefix}{stock_name} ({ticker})")
 
-        # 2. 🚀 희망 탭 로직
         if prev_5 > 0:
             growth_rate = (recent_5 - prev_5) / prev_5 * 100
             if growth_rate >= 40:
@@ -115,7 +113,6 @@ def classify_stock_groups(subject_col):
                 prefix = "🔥 " if is_recent_hot else ""
                 hope_list.append(f"{prefix}{stock_name} ({ticker})")
 
-        # 3. 🚨 정리 탭 로직
         if prev_5 > 0 and recent_5 < prev_5:
             drop_rate = (prev_5 - recent_5) / prev_5 * 100
             if 10 < drop_rate <= 30:
@@ -132,11 +129,8 @@ def clean_sel_name(val):
 
 def clean_pure_name(val):
     if not val: return ""
-    return val.split("(")[0].replace("🌱 ", "").replace("🔥 ", "").replace("🚨 ", "").strip()
+    return val.split("(").replace("🌱 ", "").replace("🔥 ", "").replace("🚨 ", "").strip()
 
-# ==========================================
-# 3. 모바일 최적화 차트 빌더 (Plotly)
-# ==========================================
 def draw_custom_multi_chart(df, label_name, configs):
     df = df.sort_values(by='Date').reset_index(drop=True)
     fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -151,56 +145,30 @@ def draw_custom_multi_chart(df, label_name, configs):
 
         if conf["bar"]:
             bar_colors = [conf["pos_bar"] if val >= 0 else conf["neg_bar"] for val in series]
-            fig.add_trace(go.Bar(
-                x=df['Date'], y=series, marker_color=bar_colors,
-                name=f"{sub} 당일 순매수", opacity=0.5
-            ), secondary_y=False)
+            fig.add_trace(go.Bar(x=df['Date'], y=series, marker_color=bar_colors, name=f"{sub} 당일 순매수", opacity=0.5), secondary_y=False)
 
         cum_series = series.cumsum()
-        first_val = cum_series.iloc[0] if not cum_series.empty else 0
+        first_val = cum_series.iloc if not cum_series.empty else 0
         aligned_cum = cum_series - first_val
 
         if conf["cum"]:
-            fig.add_trace(go.Scatter(
-                x=df['Date'], y=aligned_cum, mode='lines',
-                name=f"{sub} 누적 수급선", line=dict(color=base_color, width=2.5)
-            ), secondary_y=True)
-
+            fig.add_trace(go.Scatter(x=df['Date'], y=aligned_cum, mode='lines', name=f"{sub} 누적 수급선", line=dict(color=base_color, width=2.5)), secondary_y=True)
         if conf["ma5"]:
-            fig.add_trace(go.Scatter(
-                x=df['Date'], y=aligned_cum.rolling(window=5).mean(), mode='lines',
-                name=f"{sub} 5일 이평선", line=dict(color=base_color, width=1.5)
-            ), secondary_y=True)
-
+            fig.add_trace(go.Scatter(x=df['Date'], y=aligned_cum.rolling(window=5).mean(), mode='lines', name=f"{sub} 5일 이평선", line=dict(color=base_color, width=1.5)), secondary_y=True)
         if conf["ma10"]:
-            fig.add_trace(go.Scatter(
-                x=df['Date'], y=aligned_cum.rolling(window=10).mean(), mode='lines',
-                name=f"{sub} 10일 이평선", line=dict(color=base_color, width=1.5, dash='dash')
-            ), secondary_y=True)
-
+            fig.add_trace(go.Scatter(x=df['Date'], y=aligned_cum.rolling(window=10).mean(), mode='lines', name=f"{sub} 10일 이평선", line=dict(color=base_color, width=1.5, dash='dash')), secondary_y=True)
         if conf["ma20"]:
-            fig.add_trace(go.Scatter(
-                x=df['Date'], y=aligned_cum.rolling(window=20).mean(), mode='lines',
-                name=f"{sub} 20일 이평선", line=dict(color=base_color, width=1.5, dash='dot')
-            ), secondary_y=True)
+            fig.add_trace(go.Scatter(x=df['Date'], y=aligned_cum.rolling(window=20).mean(), mode='lines', name=f"{sub} 20일 이평선", line=dict(color=base_color, width=1.5, dash='dot')), secondary_y=True)
 
     fig.update_layout(
-        template="plotly_white",
-        height=400,
-        hovermode="x unified",
-        margin=dict(l=10, r=10, t=40, b=10),
+        template="plotly_white", height=400, hovermode="x unified", margin=dict(l=10, r=10, t=40, b=10),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=10)),
-        title=dict(text=f"📈 {label_name}", font=dict(size=14)),
-        dragmode="pan",
-        uirevision="constant"
+        title=dict(text=f"📈 {label_name}", font=dict(size=14)), dragmode="pan", uirevision="constant"
     )
     fig.update_xaxes(fixedrange=False)
     fig.update_yaxes(fixedrange=False)
     return fig
 
-# ==========================================
-# 4. 전체 앱 모바일 반응형 레이아웃 구성
-# ==========================================
 sidebar_layout = html.Div([
     html.H4("🛠️ 대시보드 제어판", className="text-dark font-weight-bold mb-3", style={"fontSize": "18px"}),
     html.Hr(),
@@ -228,19 +196,12 @@ tabs_layout = dbc.Tabs([
 
 app.layout = dbc.Container([
     dcc.Store(id='local-fav-storage', storage_type='local'),
-    
     dbc.Row([
         dbc.Col(sidebar_layout, xs=12, md=3),
-        dbc.Col([
-            tabs_layout,
-            html.Div(id="tab-content-render")
-        ], xs=12, md=9)
+        dbc.Col([tabs_layout, html.Div(id="tab-content-render")], xs=12, md=9)
     ], className="g-3")
 ], fluid=True, style={"backgroundColor": "#f8f9fa", "minHeight": "100vh", "padding": "10px"})
 
-# ==========================================
-# 5. 인터랙티브 통합 리액티브 백엔드 (Callbacks)
-# ==========================================
 @app.callback(
     Output("tab-content-render", "children"),
     Output('local-fav-storage', 'data'),
@@ -266,7 +227,6 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
     checkbox_counts = len(subjects_meta) * 5
     cb_inputs = args[:checkbox_counts]
     states = args[checkbox_counts:]
-    
     current_configs = {}
     idx = 0
     subs = list(subjects_meta.keys())
@@ -276,47 +236,35 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
                 current_configs[s] = {"color": subjects_meta[s]["color"], "pos_bar": subjects_meta[s]["pos_bar"], "neg_bar": subjects_meta[s]["neg_bar"]}
             current_configs[s][metric] = cb_inputs[idx]
             idx += 1
-            
     for s in subs:
         current_configs[s]["active"] = any(current_configs[s][m] for m in ["bar", "cum", "ma5", "ma10", "ma20"])
-
     active_subs = [s for s, c in current_configs.items() if c["active"]]
-    primary_subject = active_subs[0] if active_subs else "외국인"
+    primary_subject = active_subs if active_subs else "외국인"
     primary_col = subject_col_map[primary_subject]
-    
     sprouts, hopes, cleans = classify_stock_groups(primary_col)
-    
     (ind_stock, t1_s, t1_e, spr_stock, t2_s, t2_e, hp_stock, t3_s, t3_e, cl_stock, t4_s, t4_e, fav_stocks, t5_s, t5_e) = states
-    
     today_str = datetime.date.today().strftime("%Y-%m-%d")
     jan_1_str = f"{datetime.date.today().year}-01-01"
-    
     t1_s, t1_e = t1_s or jan_1_str, t1_e or today_str
     t2_s, t2_e = t2_s or jan_1_str, t2_e or today_str
     t3_s, t3_e = t3_s or jan_1_str, t3_e or today_str
     t4_s, t4_e = t4_s or jan_1_str, t4_e or today_str
     t5_s, t5_e = t5_s or jan_1_str, t5_e or today_str
-
     ctx = callback_context
-    triggered_id = ctx.triggered['prop_id'].split('.')[0] if ctx.triggered else ""
-    
+    triggered_id = ctx.triggered['prop_id'].split('.') if ctx.triggered else ""
     out_storage = local_storage_data
     if triggered_id == "fav_box":
         out_storage = ",".join(fav_stocks) if fav_stocks else ""
-    
     if out_storage:
         default_favs = [x.strip() for x in out_storage.split(",") if x.strip() in stock_df['선택용_이름'].values]
     else:
-        default_favs = [stock_df['선택용_이름'].iloc[100], stock_df['선택용_이름'].iloc[120]] if len(stock_df) > 130 else []
-
+        default_favs = [stock_df['선택용_이름'].iloc, stock_df['선택용_이름'].iloc] if len(stock_df) > 2 else []
     if active_tab == "tab-1":
-        ind_stock = ind_stock or stock_df['선택용_이름'].iloc[0]
-        ticker = stock_df[stock_df['선택용_이름'] == ind_stock]['티커'].values[0]
-        name = stock_df[stock_df['선택용_이름'] == ind_stock]['종목명'].values[0]
-        
-        df = get_all_investor_data(ticker, t1_s, t1_e)
+        ind_stock = ind_stock or (stock_df['선택용_이름'].iloc if not stock_df.empty else "")
+        ticker = stock_df[stock_df['선택용_이름'] == ind_stock]['티커'].values if ind_stock in stock_df['선택용_이름'].values else ""
+        name = stock_df[stock_df['선택용_이름'] == ind_stock]['종목명'].values if ind_stock in stock_df['선택용_이름'].values else ""
+        df = get_all_investor_data(ticker, t1_s, t1_e) if ticker else pd.DataFrame()
         chart_node = dcc.Graph(figure=draw_custom_multi_chart(df, name, current_configs), config={"scrollZoom": True, "displayModeBar": False}) if not df.empty else dbc.Alert("데이터가 없습니다. 제어판 설정을 확인해 주세요.", color="warning", className="mt-2")
-        
         return html.Div([
             dbc.Row([
                 dbc.Col([
@@ -334,11 +282,9 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
             ], className="g-2 mb-3"),
             chart_node
         ]), out_storage
-
     elif active_tab == "tab-2":
         dropdown_opts = sprouts if sprouts else ["종목 없음"]
-        spr_stock = spr_stock if spr_stock in dropdown_opts else dropdown_opts[0]
-        
+        spr_stock = spr_stock if spr_stock in dropdown_opts else dropdown_opts
         if sprouts and spr_stock != "종목 없음":
             s_ticker = clean_sel_name(spr_stock)
             s_name = clean_pure_name(spr_stock)
@@ -346,7 +292,6 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
             chart_node = dcc.Graph(figure=draw_custom_multi_chart(df, s_name, current_configs), config={"scrollZoom": True, "displayModeBar": False}) if not df.empty else dbc.Alert("해당 기간 내 데이터가 없습니다.", color="warning", className="mt-2")
         else:
             chart_node = dbc.Alert(f"현재 [{primary_subject}] 기준 조건에 부합하는 새싹 종목이 없습니다.", color="warning", className="mt-2")
-            
         return html.Div([
             dbc.Row([
                 dbc.Col([
@@ -364,11 +309,9 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
             ], className="g-2 mb-3"),
             chart_node
         ]), out_storage
-
     elif active_tab == "tab-3":
         dropdown_opts = hopes if hopes else ["종목 없음"]
-        hp_stock = hp_stock if hp_stock in dropdown_opts else dropdown_opts[0]
-        
+        hp_stock = hp_stock if hp_stock in dropdown_opts else dropdown_opts
         if hopes and hp_stock != "종목 없음":
             h_ticker = clean_sel_name(hp_stock)
             h_name = clean_pure_name(hp_stock)
@@ -376,7 +319,6 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
             chart_node = dcc.Graph(figure=draw_custom_multi_chart(df, h_name, current_configs), config={"scrollZoom": True, "displayModeBar": False}) if not df.empty else dbc.Alert("해당 기간 내 데이터가 없습니다.", color="warning", className="mt-2")
         else:
             chart_node = dbc.Alert(f"현재 [{primary_subject}] 기준 조건에 부합하는 희망 종목이 없습니다.", color="warning", className="mt-2")
-            
         return html.Div([
             dbc.Row([
                 dbc.Col([
@@ -394,11 +336,9 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
             ], className="g-2 mb-3"),
             chart_node
         ]), out_storage
-
     elif active_tab == "tab-4":
         dropdown_opts = cleans if cleans else ["종목 없음"]
-        cl_stock = cl_stock if cl_stock in dropdown_opts else dropdown_opts[0]
-        
+        cl_stock = cl_stock if cl_stock in dropdown_opts else dropdown_opts
         if cleans and cl_stock != "종목 없음":
             c_ticker = clean_sel_name(cl_stock)
             c_name = clean_pure_name(cl_stock)
@@ -406,7 +346,6 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
             chart_node = dcc.Graph(figure=draw_custom_multi_chart(df, c_name, current_configs), config={"scrollZoom": True, "displayModeBar": False}) if not df.empty else dbc.Alert("해당 기간 내 데이터가 없습니다.", color="warning", className="mt-2")
         else:
             chart_node = dbc.Alert(f"현재 [{primary_subject}] 기준 조건에 부합하는 정리 대상 종목이 없습니다.", color="warning", className="mt-2")
-            
         return html.Div([
             dbc.Row([
                 dbc.Col([
@@ -415,8 +354,7 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
                 ], xs=12, md=6),
                 dbc.Col([
                     html.Label("📅 분석 기간:", className="font-weight-bold text-secondary", style={"fontSize": "13px"}),
-                    html.Div([
-                        dcc.DatePickerInput(id="date_input_tab4_start", date=t4_s, display_format="YYYY-MM-DD", style={"width": "47%"}),
+                    html.Div([                        dcc.DatePickerInput(id="date_input_tab4_start", date=t4_s, display_format="YYYY-MM-DD", style={"width": "47%"}),
                         html.Span(" ~ ", style={"padding": "0 5px"}),
                         dcc.DatePickerInput(id="date_input_tab4_end", date=t4_e, display_format="YYYY-MM-DD", style={"width": "47%"})
                     ], style={"display": "flex", "alignItems": "center"})
@@ -431,8 +369,9 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
         
         if fav_stocks:
             for idx, stock_name in enumerate(fav_stocks):
-                ticker = stock_df[stock_df['선택용_이름'] == stock_name]['티커'].values[0]
-                name = stock_df[stock_df['선택용_이름'] == stock_name]['종목명'].values[0]
+                if stock_name not in stock_df['선택용_이름'].values: continue
+                ticker = stock_df[stock_df['선택용_이름'] == stock_name]['티커'].values
+                name = stock_df[stock_df['선택용_이름'] == stock_name]['종목명'].values
                 df_fav = get_all_investor_data(ticker, t5_s, t5_e)
                 if not df_fav.empty:
                     charts_list.append(dcc.Graph(id=f"chart_fav_{ticker}_{idx}", figure=draw_custom_multi_chart(df_fav, name, current_configs), config={"scrollZoom": True, "displayModeBar": False}))
@@ -464,3 +403,5 @@ def render_and_update_tabs(active_tab, local_storage_data, *args):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8050))
     app.run_server(host="0.0.0.0", port=port, debug=False)
+
+

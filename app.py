@@ -202,8 +202,27 @@ tabs_layout = dbc.Tabs([
     dbc.Tab(label="⭐ 나의 새싹 즐겨찾기", tab_id="tab-5", tab_style={"cursor": "pointer"}, label_style={"fontWeight": "600", "fontSize": "13px"}),
 ], id="tabs-control", active_tab="tab-1", className="mb-3 custom-tabs")
 
+hidden_state_holders = html.Div([
+    dcc.Dropdown(id="individual_select"),
+    dcc.DatePickerSingle(id="date_input_tab1_start"),
+    dcc.DatePickerSingle(id="date_input_tab1_end"),
+    dcc.Dropdown(id="sprout_sel"),
+    dcc.DatePickerSingle(id="date_input_tab2_start"),
+    dcc.DatePickerSingle(id="date_input_tab2_end"),
+    dcc.Dropdown(id="hope_sel"),
+    dcc.DatePickerSingle(id="date_input_tab3_start"),
+    dcc.DatePickerSingle(id="date_input_tab3_end"),
+    dcc.Dropdown(id="clean_sel"),
+    dcc.DatePickerSingle(id="date_input_tab4_start"),
+    dcc.DatePickerSingle(id="date_input_tab4_end"),
+    dcc.Dropdown(id="fav_box", multi=True),
+    dcc.DatePickerSingle(id="date_input_tab5_start"),
+    dcc.DatePickerSingle(id="date_input_tab5_end"),
+], style={"display": "none"})
+
 app.layout = dbc.Container([
     dcc.Store(id='local-fav-storage', storage_type='local'),
+    hidden_state_holders,
     dbc.Row([
         dbc.Col(sidebar_layout, xs=12, md=3),
         dbc.Col([tabs_layout, html.Div(id="tab-content-render")], xs=12, md=9)

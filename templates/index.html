@@ -2,39 +2,237 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <!-- 핵심: 모바일 두 손가락 줌인/줌아웃 전면 허용 뷰포트 -->
+    <!-- 모바일 환경에서 줌인/줌아웃(Pinch-to-zoom) 및 자유로운 확대가 가능하도록 뷰포트 강제 허용 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>새싹발굴하기 - Pro Dashboard</title>
+    <!-- Plotly.js 차트 렌더링 라이브러리 로드 -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
-        body { background-color: #f8f9fa; font-family: 'Helvetica Neue', sans-serif; margin: 0; padding: 15px; color: #333; }
-        h1, h2, h3 { letter-spacing: -0.5px; }
-        .container { max-width: 100%; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .tab-header { font-size: 18px; font-weight: bold; color: #0047AB; margin-bottom: 15px; border-bottom: 2px solid #e9ecef; padding-bottom: 10px; }
-        select, input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #dee2e6; font-size: 16px; box-sizing: border-box; }
-        .hot-badge { background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 10px 15px; border-radius: 6px; font-weight: bold; margin-bottom: 15px; font-size: 14px; }
+        .main { background-color: #f8f9fa; }
+        body { font-family: 'Helvetica Neue', sans-serif; margin: 0; padding: 15px; background-color: #f8f9fa; color: #333; }
+        
+        /* 탭 전체 영역 간격 및 디자인 */
+        .tab-list { display: flex; gap: 8px; border-bottom: 2px solid #e9ecef; margin-bottom: 20px; overflow-x: auto; }
+        .tab-btn {
+            height: 48px; padding: 0 16px; white-space: pre-wrap; background-color: #ffffff;
+            border-radius: 8px 8px 0px 0px; font-weight: 600; font-size: 15px; color: #495057;
+            border: 1px solid #dee2e6; border-bottom: none; cursor: pointer; flex-shrink: 0;
+        }
+        .tab-btn.active {
+            background-color: #ffffff !important; color: #0047AB !important;
+            border-top: 3px solid #0047AB !important; border-bottom: 2px solid #ffffff !important;
+            font-weight: 700;
+        }
+        .tab-content { display: none; background: white; padding: 20px; border-radius: 0 0 8px 8px; border: 1px solid #dee2e6; border-top: none; }
+        .tab-content.active { display: block; }
+
+        /* 제어판 및 입력폼 스타일 */
+        .control-panel { background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; margin-bottom: 15px; }
+        select, input { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #dee2e6; font-size: 15px; box-sizing: border-box; }
+        
+        .hot-badge {
+            background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404;
+            padding: 10px 15px; border-radius: 6px; font-weight: bold; margin-bottom: 15px; font-size: 14px;
+        }
+        h1, h2, h3 { font-family: 'Helvetica Neue', sans-serif; letter-spacing: -0.5px; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>새싹발굴하기 - Pro Dashboard</h2>
-        <div class="hot-badge">💡 모바일 환경에서 두 손가락으로 화면과 차트를 자유롭게 확대/축소(Pinch-to-zoom)할 수 있습니다.</div>
-        
-        <div class="tab-header">🔎 개별 종목 분석</div>
-        <label>📊 분석할 종목을 입력하거나 고르세요:</label>
-        <select id="stockSelect">
-            {% for stock in stock_list %}
-                <option value="{{ stock }}">{{ stock }}</option>
-            {% endfor %}
-        </select>
-        
-        <label>📅 분석 기간을 선택하세요:</label>
-        <input type="date" id="startDate" value="2026-01-01">
-        <input type="date" id="endDate" value="">
+
+    <h2>새싹발굴하기 - Pro Dashboard</h2>
+
+    <!-- 탭 5개 구성 -->
+    <div class="tab-list">
+        <button class="tab-btn active" onclick="switchTab(0)">🔎 개별 종목 분석</button>
+        <button class="tab-btn" onclick="switchTab(1)">🌱 새싹 발굴</button>
+        <button class="tab-btn" onclick="switchTab(2)">🚀 희망 종목</button>
+        <button class="tab-btn" onclick="switchTab(3)">🚨 정리 종목</button>
+        <button class="tab-btn" onclick="switchTab(4)">⭐ 나의 새싹 즐겨찾기</button>
+    </div>
+
+    <!-- 탭 1: 개별 종목 분석 -->
+    <div id="tab-0" class="tab-content active">
+        <div class="control-panel grid-2">
+            <div>
+                <label>📊 분석할 종목을 입력하거나 고르세요:</label>
+                <select id="sel_tab1" onchange="loadChart(1)"></select>
+            </div>
+            <div>
+                <label>📅 분석 기간을 선택하세요:</label>
+                <input type="date" id="start_tab1" value="2026-01-01" onchange="loadChart(1)">
+            </div>
+        </div>
+        <div id="chart_tab1" style="width:100%; height:500px;"></div>
+    </div>
+
+    <!-- 탭 2: 새싹 발굴 -->
+    <div id="tab-1" class="tab-content">
+        <div class="hot-badge">💡 생애 최초로 외국인 수급이 유입된 기업들입니다. (🌱 표시는 최근 5일 내 신규 진입 종목)</div>
+        <div class="control-panel grid-2">
+            <div>
+                <label>발굴된 새싹 종목 선택:</label>
+                <select id="sel_tab2" onchange="loadChart(2)"></select>
+            </div>
+            <div>
+                <label>📅 분석 기간을 선택하세요:</label>
+                <input type="date" id="start_tab2" value="2026-01-01" onchange="loadChart(2)">
+            </div>
+        </div>
+        <div id="chart_tab2" style="width:100%; height:500px;"></div>
+    </div>
+
+    <!-- 탭 3: 희망 종목 -->
+    <div id="tab-2" class="tab-content">
+        <div class="hot-badge">💡 전 5일 대비 수급 증가율이 20% 이상인 종목들입니다. (🔥 표시는 최근 5일 내 신규 진입)</div>
+        <div class="control-panel grid-2">
+            <div>
+                <label>희망 종목 선택:</label>
+                <select id="sel_tab3" onchange="loadChart(3)"></select>
+            </div>
+            <div>
+                <label>📅 분석 기간을 선택하세요:</label>
+                <input type="date" id="start_tab3" value="2026-01-01" onchange="loadChart(3)">
+            </div>
+        </div>
+        <div id="chart_tab3" style="width:100%; height:500px;"></div>
+    </div>
+
+    <!-- 탭 4: 정리 종목 -->
+    <div id="tab-3" class="tab-content">
+        <div class="hot-badge">💡 전 5일 대비 수급 하락률이 10%를 초과하는 종목들입니다. 30% 이상은 리스트에서 제거. (🚨 표시는 최근 5일 내 급하락 진입)</div>
+        <div class="control-panel grid-2">
+            <div>
+                <label>정리 종목 선택:</label>
+                <select id="sel_tab4" onchange="loadChart(4)"></select>
+            </div>
+            <div>
+                <label>📅 분석 기간을 선택하세요:</label>
+                <input type="date" id="start_tab4" value="2026-01-01" onchange="loadChart(4)">
+            </div>
+        </div>
+        <div id="chart_tab4" style="width:100%; height:500px;"></div>
+    </div>
+
+    <!-- 탭 5: 나의 새싹 즐겨찾기 -->
+    <div id="tab-4" class="tab-content">
+        <div class="control-panel grid-2">
+            <div>
+                <label>📌 즐겨찾기 종목 선택 (다중 선택 가능):</label>
+                <select id="sel_tab5" multiple style="height: 100px;" onchange="loadChart(5)"></select>
+            </div>
+            <div>
+                <label>📅 분석 기간을 선택하세요:</label>
+                <input type="date" id="start_tab5" value="2026-01-01" onchange="loadChart(5)">
+            </div>
+        </div>
+        <div id="chart_tab5" style="width:100%; height:500px;"></div>
     </div>
 
     <script>
-        // 오늘 날짜 자동 입력
-        document.getElementById('endDate').value = new Date().toISOString().split('T')[0];
+        let globalData = {};
+
+        function switchTab(index) {
+            const btns = document.querySelectorAll('.tab-btn');
+            const contents = document.querySelectorAll('.tab-content');
+            btns.forEach((b, i) => {
+                b.classList.toggle('active', i === index);
+                contents[i].classList.toggle('active', i === index);
+            });
+        }
+
+        async function init() {
+            const res = await fetch('/api/init_data');
+            const data = await res.json();
+            globalData = data;
+
+            // 종목 리스트 채우기
+            populateSelect('sel_tab1', data.stocks);
+            populateSelect('sel_tab2', data.sprouts.length ? data.sprouts : ["종목 없음"]);
+            populateSelect('sel_tab3', data.hopes.length ? data.hopes : ["종목 없음"]);
+            populateSelect('sel_tab4', data.cleans.length ? data.cleans : ["종목 없음"]);
+            populateSelect('sel_tab5', data.stocks);
+
+            // 초기 첫 차트 로드
+            loadChart(1);
+        }
+
+        function populateSelect(elementId, items) {
+            const sel = document.getElementById(elementId);
+            sel.innerHTML = '';
+            items.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item;
+                opt.text = item;
+                sel.appendChild(opt);
+            });
+        }
+
+        function parseTicker(val) {
+            if (!val || val === "종목 없음") return { ticker: "", name: "" };
+            const parts = val.split('(');
+            const name = parts[0].replace("🌱 ", "").replace("🔥 ", "").replace("🚨 ", "").trim();
+            const ticker = parts[1].replace(')', '').trim();
+            return { ticker, name };
+        }
+
+        async function loadChart(tabNum) {
+            let selId = `sel_tab${tabNum}`;
+            let startId = `start_tab${tabNum}`;
+            let chartId = `chart_tab${tabNum}`;
+            
+            const selElem = document.getElementById(selId);
+            const startDate = document.getElementById(startId).value;
+            const endDate = new Date().toISOString().split('T')[0];
+
+            if (tabNum === 5) {
+                // 즐겨찾기(다중) 처리
+                const selectedOptions = Array.from(selElem.selectedOptions).map(opt => opt.value);
+                if (selectedOptions.length === 0) return;
+                
+                document.getElementById(chartId).innerHTML = '';
+                for (let i = 0; i < selectedOptions.length; i++) {
+                    const { ticker, name } = parseTicker(selectedOptions[i]);
+                    const subDiv = document.createElement('div');
+                    subDiv.id = `sub_chart_${i}`;
+                    subDiv.style.height = '450px';
+                    subDiv.style.marginBottom = '20px';
+                    document.getElementById(chartId).appendChild(subDiv);
+
+                    fetchChartData(ticker, name, startDate, endDate, subDiv.id);
+                }
+                return;
+            }
+
+            const { ticker, name } = parseTicker(selElem.value);
+            if (!ticker) return;
+
+            fetchChartData(ticker, name, startDate, endDate, chartId);
+        }
+
+        async function fetchChartData(ticker, name, start, end, targetElementId) {
+            const configs = {
+                "외국인": { active: true, bar: true, cum: true, ma5: true, ma10: false, ma20: false, color: "#FF0000", pos_bar: "#FF0000", neg_bar: "#FFA07A" },
+                "기관": { active: true, bar: false, cum: true, ma5: false, ma10: false, ma20: false, color: "#1F77B4", pos_bar: "#1E90FF", neg_bar: "#B0C4DE" },
+                "개인": { active: true, bar: false, cum: false, ma5: false, ma10: false, ma20: false, color: "#2CA02C", pos_bar: "#32CD32", neg_bar: "#8FBC8F" }
+            };
+
+            const res = await fetch('/api/get_chart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticker, name, start, end, configs })
+            });
+            const data = await res.json();
+            if (!data.empty) {
+                Plotly.react(targetElementId, data.chart.data, data.chart.layout, { scrollZoom: true, displayModeBar: false, responsive: true });
+            } else {
+                document.getElementById(targetElementId).innerHTML = '<p style="text-align:center; padding:50px;">해당 기간 내 데이터가 없습니다.</p>';
+            }
+        }
+
+        init();
     </script>
 </body>
 </html>
